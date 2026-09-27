@@ -1,0 +1,7 @@
+build/
+.DS_Store
+
+# Default sounds are third-party recordings: kept locally, never published.
+# See "Sounds" in README.md.
+Sounds/nk-cream/
+Sounds/mouse/
