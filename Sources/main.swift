@@ -301,9 +301,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     private func refreshIcon() {
         guard let button = statusItem?.button else { return }
-        let name = !listener.isRunning ? "keyboard.badge.exclamationmark"
-                 : model.enabled ? "keyboard" : "speaker.slash"
-        button.image = NSImage(systemSymbolName: name, accessibilityDescription: "Cream")
+        // The keycap while sound is on; system symbols flag the other states.
+        button.image = !listener.isRunning
+            ? NSImage(systemSymbolName: "keyboard.badge.exclamationmark", accessibilityDescription: "Cream")
+            : model.enabled ? MenuIcon.keycap
+            : NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: "Cream")
         button.appearsDisabled = !model.enabled
         button.toolTip = model.enabled ? "Cream: sound on (right-click to mute)"
                                        : "Cream: muted (right-click to unmute)"

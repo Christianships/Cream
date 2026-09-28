@@ -1,87 +1,100 @@
-// Draws the app icon: a single cream keycap, seen from a little above the
-// front: a sculpted skirt, a dished top and a "C" legend in the corner.
+// Draws the app icon: a white mechanical-keyboard keycap on a black tile, seen
+// from the front and a little above: dished top face, tall front skirt, and
+// slim sloped sides, lit from the top left.
 // Usage: swift Icon/make-icon.swift Icon/AppIcon.iconset && iconutil -c icns Icon/AppIcon.iconset
 import AppKit
 
 let out = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "Icon/AppIcon.iconset")
-
-func rgb(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
-    CGColor(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255,
-            blue: CGFloat(hex & 0xFF) / 255, alpha: a)
-}
 let space = CGColorSpace(name: CGColorSpace.sRGB)!
-func gradient(_ stops: [(UInt32, CGFloat, CGFloat)]) -> CGGradient {
-    CGGradient(colorsSpace: space, colors: stops.map { rgb($0.0, $0.1) } as CFArray, locations: stops.map { $0.2 })!
+
+func gray(_ v: CGFloat, _ a: CGFloat = 1) -> CGColor { CGColor(srgbRed: v, green: v, blue: v, alpha: a) }
+func gradient(_ stops: [(CGFloat, CGFloat)], alpha: CGFloat = 1) -> CGGradient {
+    CGGradient(colorsSpace: space, colors: stops.map { gray($0.0, alpha) } as CFArray, locations: stops.map { $0.1 })!
 }
+
+/// A closed polygon with every corner rounded by `r`.
+func rounded(_ pts: [CGPoint], _ r: CGFloat) -> CGPath {
+    let p = CGMutablePath()
+    let n = pts.count
+    let mid = { (a: CGPoint, b: CGPoint) in CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2) }
+    p.move(to: mid(pts[n - 1], pts[0]))
+    for i in 0..<n { p.addArc(tangent1End: pts[i], tangent2End: pts[(i + 1) % n], radius: r) }
+    p.closeSubpath()
+    return p
+}
+
+// Keycap geometry in the 1024 grid, y down. The top face is a trapezoid (a
+// little wider at the front); the skirt flares out from it to the base.
+let top = [CGPoint(x: 322, y: 262), CGPoint(x: 702, y: 262), CGPoint(x: 722, y: 540), CGPoint(x: 302, y: 540)]
+let baseFront = [CGPoint(x: 206, y: 806), CGPoint(x: 818, y: 806)]     // front bottom edge
+let baseBack = [CGPoint(x: 232, y: 300), CGPoint(x: 792, y: 300)]      // back bottom corners (hidden behind the top)
+let silhouette = [baseBack[0], top[0], top[1], baseBack[1], baseFront[1], baseFront[0]]
+let front = [top[3], top[2], baseFront[1], baseFront[0]]
+let left = [baseBack[0], top[0], top[3], baseFront[0]]
+let right = [top[1], baseBack[1], baseFront[1], top[2]]
 
 func render(_ px: Int) -> Data {
     let s = CGFloat(px)
     let ctx = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0, space: space,
                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-    // Drawn top-down in a 1024 grid.
     ctx.translateBy(x: 0, y: s); ctx.scaleBy(x: s / 1024, y: -s / 1024)
 
-    // The skirt: the keycap's footprint on the macOS icon grid.
-    let base = CGRect(x: 112, y: 120, width: 800, height: 790)
-    let baseShape = CGPath(roundedRect: base, cornerWidth: 150, cornerHeight: 150, transform: nil)
-    // The top face: narrower than the base (the sides slope in) and set back,
-    // so the front of the skirt shows taller than the back.
-    let top = CGRect(x: 222, y: 168, width: 580, height: 560)
-    let topShape = CGPath(roundedRect: top, cornerWidth: 96, cornerHeight: 96, transform: nil)
-
-    // Shadow on the "desk". (Shadow offsets ignore the flipped CTM, so down is negative.)
+    // Black tile on the macOS icon grid. (Shadow offsets ignore the flipped CTM: down is negative.)
+    let tile = CGPath(roundedRect: CGRect(x: 100, y: 100, width: 824, height: 824), cornerWidth: 185, cornerHeight: 185, transform: nil)
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -22), blur: 40, color: CGColor(gray: 0, alpha: 0.35))
-    ctx.addPath(baseShape); ctx.setFillColor(rgb(0xD9C7A5)); ctx.fillPath()
+    ctx.setShadow(offset: CGSize(width: 0, height: -12), blur: 28, color: gray(0, 0.4))
+    ctx.addPath(tile); ctx.setFillColor(gray(0.04)); ctx.fillPath()
+    ctx.restoreGState()
+    ctx.saveGState()
+    ctx.addPath(tile); ctx.clip()
+    ctx.drawLinearGradient(gradient([(0.13, 0), (0.03, 1)]), start: CGPoint(x: 512, y: 100), end: CGPoint(x: 512, y: 924), options: [])
+    // A soft pool of light on the "desk" under the key.
+    let pool = CGGradient(colorsSpace: space, colors: [gray(1, 0.1), gray(1, 0)] as CFArray, locations: [0, 1])!
+    ctx.saveGState()
+    ctx.translateBy(x: 512, y: 812); ctx.scaleBy(x: 1, y: 0.28)
+    ctx.drawRadialGradient(pool, startCenter: .zero, startRadius: 0, endCenter: .zero, endRadius: 420, options: [])
+    ctx.restoreGState()
     ctx.restoreGState()
 
-    // Skirt shading: light from above, so the back is brightest, the front
-    // mid, and the left/right sides fall off towards their edges.
+    let r: CGFloat = 46
+    let body = rounded(silhouette, 70)
+    // Contact shadow.
     ctx.saveGState()
-    ctx.addPath(baseShape); ctx.clip()
-    ctx.drawLinearGradient(gradient([(0xF3E7CF, 1, 0), (0xE4D2B0, 1, 0.55), (0xCDB58C, 1, 1)]),
-                           start: CGPoint(x: 512, y: 120), end: CGPoint(x: 512, y: 910), options: [])
-    ctx.drawLinearGradient(gradient([(0x8C7250, 0.28, 0), (0x8C7250, 0, 0.22), (0x8C7250, 0, 0.78), (0x8C7250, 0.34, 1)]),
-                           start: CGPoint(x: 112, y: 500), end: CGPoint(x: 912, y: 500), options: [])
-    // Corner seams where the sides meet, from each base corner towards the top face.
-    ctx.setStrokeColor(rgb(0x9C8260, 0.28)); ctx.setLineWidth(5); ctx.setLineCap(.round)
-    for (a, b) in [(CGPoint(x: 175, y: 180), CGPoint(x: 250, y: 196)), (CGPoint(x: 849, y: 180), CGPoint(x: 774, y: 196)),
-                   (CGPoint(x: 172, y: 852), CGPoint(x: 252, y: 700)), (CGPoint(x: 852, y: 852), CGPoint(x: 772, y: 700))] {
-        ctx.move(to: a); ctx.addLine(to: b)
-    }
-    ctx.strokePath()
+    ctx.setShadow(offset: CGSize(width: 0, height: -18), blur: 34, color: gray(0, 0.7))
+    ctx.addPath(body); ctx.setFillColor(gray(0.9)); ctx.fillPath()
     ctx.restoreGState()
-    // A thin darker rim at the bottom edge of the skirt.
-    ctx.addPath(baseShape); ctx.setStrokeColor(rgb(0xA88E68, 0.55)); ctx.setLineWidth(6); ctx.strokePath()
 
-    // The top face, with a soft edge shadow where it meets the skirt.
+    // Skirt faces, clipped to the rounded silhouette so the corners stay soft.
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -6), blur: 14, color: rgb(0x7A6242, 0.35))
-    ctx.addPath(topShape); ctx.setFillColor(rgb(0xF6ECD8)); ctx.fillPath()
-    ctx.restoreGState()
-    // Cylindrical dish: darker at the back edge, brighter towards the front lip.
-    ctx.saveGState()
-    ctx.addPath(topShape); ctx.clip()
-    ctx.drawLinearGradient(gradient([(0xE3D2B2, 1, 0), (0xF1E5CC, 1, 0.35), (0xFBF4E6, 1, 0.82), (0xEFE2C8, 1, 1)]),
-                           start: CGPoint(x: 512, y: 168), end: CGPoint(x: 512, y: 728), options: [])
-    ctx.drawRadialGradient(gradient([(0xFFFFFF, 0.35, 0), (0xFFFFFF, 0, 1)]),
-                           startCenter: CGPoint(x: 512, y: 520), startRadius: 0,
-                           endCenter: CGPoint(x: 512, y: 520), endRadius: 300, options: [])
-    ctx.restoreGState()
-    ctx.addPath(topShape); ctx.setStrokeColor(rgb(0xFFFFFF, 0.55)); ctx.setLineWidth(4); ctx.strokePath()
-
-    // The legend, top left like an alpha key. Skipped where it'd be a smudge.
-    if px >= 64 {
-        let font = NSFont.systemFont(ofSize: 150, weight: .semibold)
-        let attr = NSAttributedString(string: "C", attributes: [.font: font, .foregroundColor: NSColor(cgColor: rgb(0x6E5838))!])
-        let line = CTLineCreateWithAttributedString(attr)
+    ctx.addPath(body); ctx.clip()
+    for (face, shade) in [(left, (0.97, 0.88)), (right, (0.84, 0.74)), (front, (0.93, 0.84))] {
         ctx.saveGState()
-        ctx.textMatrix = .identity
-        ctx.translateBy(x: 292, y: 368); ctx.scaleBy(x: 1, y: -1)    // text draws y-up
-        ctx.textPosition = .zero
-        CTLineDraw(line, ctx)
+        ctx.addPath(rounded(face, 8)); ctx.clip()
+        ctx.drawLinearGradient(gradient([(shade.0, 0), (shade.1, 1)]),
+                               start: CGPoint(x: 512, y: 262), end: CGPoint(x: 512, y: 806), options: [])
         ctx.restoreGState()
     }
+    // Soft highlight along the front skirt, and seams where the faces meet.
+    ctx.setStrokeColor(gray(1, 0.18)); ctx.setLineWidth(6); ctx.setLineCap(.round)
+    for (a, b) in [(top[3], baseFront[0]), (top[2], baseFront[1])] { ctx.move(to: a); ctx.addLine(to: b) }
+    ctx.strokePath()
+    ctx.restoreGState()
+
+    // Top face with a cylindrical dish: shaded at the back, brightest near the front lip.
+    let face = rounded(top, r)
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -5), blur: 12, color: gray(0, 0.25))
+    ctx.addPath(face); ctx.setFillColor(gray(0.97)); ctx.fillPath()
+    ctx.restoreGState()
+    ctx.saveGState()
+    ctx.addPath(face); ctx.clip()
+    ctx.drawLinearGradient(gradient([(0.86, 0), (0.95, 0.3), (1, 0.78), (0.93, 1)]),
+                           start: CGPoint(x: 512, y: 262), end: CGPoint(x: 512, y: 540), options: [])
+    ctx.drawLinearGradient(CGGradient(colorsSpace: space, colors: [gray(1, 0.35), gray(1, 0), gray(0, 0), gray(0, 0.08)] as CFArray,
+                                      locations: [0, 0.3, 0.7, 1])!,
+                           start: CGPoint(x: 302, y: 400), end: CGPoint(x: 722, y: 400), options: [])
+    ctx.restoreGState()
+    ctx.addPath(face); ctx.setStrokeColor(gray(1, 0.9)); ctx.setLineWidth(3); ctx.strokePath()
 
     let rep = NSBitmapImageRep(cgImage: ctx.makeImage()!)
     return rep.representation(using: .png, properties: [:])!
