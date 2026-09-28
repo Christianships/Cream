@@ -48,10 +48,13 @@ its own sound, volume and tone.
 
 ### Menu bar
 
-- **Left-click** the keyboard icon for a menu: master Sound On switch,
-  Keyboard/Mouse Clicks on/off with a volume slider each, **Settings…** (⌘,) and Quit.
-- **Right-click** (or ⌥-click) mutes or unmutes everything at once.
-- The icon shows a `!` badge while Input Monitoring permission is missing.
+- The menu bar icon is a white keycap. **Left-click** it for a menu: master
+  Sound On switch, Keyboard/Mouse Clicks on/off with a volume slider each,
+  **Settings…** (⌘,) and Quit.
+- **Right-click** (or ⌥-click) mutes or unmutes everything at once. While
+  muted the icon is a crossed-out speaker.
+- A warning triangle replaces the keycap while Input Monitoring permission is
+  missing.
 
 ### Settings panel
 
@@ -92,7 +95,7 @@ macOS 13 or later; there is no Xcode project.
 
 macOS will ask for **Input Monitoring** permission. Turn Cream on in
 System Settings → Privacy & Security → Input Monitoring. The app notices within
-~2 seconds, and you don't need to relaunch it. Until then the menu bar icon shows a `!` badge.
+~2 seconds, and you don't need to relaunch it. Until then the menu bar icon is a warning triangle.
 
 `build.sh` signs with a local self-signed certificate, "Cream Local Signing"
 (login keychain), so the permission survives rebuilds. Without it, the build
@@ -125,6 +128,8 @@ trash button moves one to the Trash.
 | File | Role |
 |---|---|
 | `Sources/main.swift` | App delegate: menu bar icon and menu, wires settings to the audio, opens the panel. |
+| `Sources/MenuIcon.swift` | The menu bar keycap, drawn once into 1x/2x template bitmaps so macOS tints it for the menu bar. |
+| `Icon/make-icon.swift` | Draws the app icon, a white mechanical keycap on a black tile; `build.sh` copies `Icon/AppIcon.icns` in. |
 | `Sources/AppModel.swift` | All settings (UserDefaults-backed) plus live status, shared by the menu and the panel. |
 | `Sources/SettingsPanel.swift` | Borderless floating SwiftUI panel. |
 | `Sources/MouseSound.swift` | Mouse click sounds: built-in + user library, import/remove, Crisp copy. |
