@@ -144,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     // MARK: Permission
 
     private func startListening() {
-        if listener.start() { model.isListening = true; return }
+        if listener.start() { model.isListening = true; refreshIcon(); return }
         KeyListener.requestPermission()
         // Poll until the user grants Input Monitoring, then start without a relaunch.
         permissionTimer?.invalidate()
@@ -302,10 +302,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func refreshIcon() {
         guard let button = statusItem?.button else { return }
         // The keycap while sound is on; system symbols flag the other states.
+        // (There's no "keyboard.badge.exclamationmark" symbol; asking for one
+        // gives nil, which left the button blank.)
         button.image = !listener.isRunning
-            ? NSImage(systemSymbolName: "keyboard.badge.exclamationmark", accessibilityDescription: "Cream")
+            ? NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Cream needs Input Monitoring")
             : model.enabled ? MenuIcon.keycap
-            : NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: "Cream")
+            : NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: "Cream is muted")
         button.appearsDisabled = !model.enabled
         button.toolTip = model.enabled ? "Cream: sound on (right-click to mute)"
                                        : "Cream: muted (right-click to unmute)"
