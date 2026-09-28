@@ -4,24 +4,28 @@ import AppKit
 /// and the front edges), drawn as a template image so macOS renders it white
 /// on a dark menu bar and black on a light one.
 enum MenuIcon {
-    /// Rendered up front at 1x and 2x: the menu bar reliably shows bitmap
-    /// template images, but left an on-demand drawn one blank.
+    /// Rendered up front at 1x and 2x into Core Graphics bitmaps, then wrapped
+    /// as CGImage-backed reps. The macOS 26 menu bar left both an on-demand
+    /// drawn image and one drawn straight into an NSBitmapImageRep blank;
+    /// CGImage-backed reps (as Mach Saver's jet uses) show.
     static let keycap: NSImage = {
-        let img = NSImage(size: NSSize(width: 18, height: 18))
+        let size = NSSize(width: 18, height: 18)
+        let img = NSImage(size: size)
         for scale in [1, 2] {
             let px = 18 * scale
-            guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8,
-                                             samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-                                             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
-                  let ctx = NSGraphicsContext(bitmapImageRep: rep) else { continue }
-            rep.size = NSSize(width: 18, height: 18)
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current = ctx
+            guard let cg = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
+                                     space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { continue }
             // Flip so draw() works with y down, like the app icon's geometry.
-            ctx.cgContext.translateBy(x: 0, y: CGFloat(px))
-            ctx.cgContext.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
+            cg.translateBy(x: 0, y: CGFloat(px))
+            cg.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(cgContext: cg, flipped: true)
             draw()
             NSGraphicsContext.restoreGraphicsState()
+            guard let image = cg.makeImage() else { continue }
+            let rep = NSBitmapImageRep(cgImage: image)
+            rep.size = size
             img.addRepresentation(rep)
         }
         img.isTemplate = true
