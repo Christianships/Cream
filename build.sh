@@ -23,6 +23,7 @@ swiftc -O -swift-version 5 -target arm64-apple-macos13.0 \
   -o "$APP/Contents/MacOS/Cream" Sources/*.swift
 
 cp Info.plist "$APP/Contents/"
+cp Icon/AppIcon.icns "$APP/Contents/Resources/"   # redraw: see Icon/make-icon.swift
 cp -R Sounds/ "$APP/Contents/Resources/Sounds/"
 
 # Sign with the local "Cream Local Signing" certificate when it exists. A stable

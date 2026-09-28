@@ -4,6 +4,7 @@
 <dict>
     <key>CFBundleName</key><string>Cream</string>
     <key>CFBundleDisplayName</key><string>Cream</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleIdentifier</key><string>dev.christianaguilar.cream</string>
     <key>CFBundleExecutable</key><string>Cream</string>
     <key>CFBundlePackageType</key><string>APPL</string>
