@@ -132,6 +132,7 @@ trash button moves one to the Trash.
 | `Icon/make-icon.swift` | Draws the app icon, a white mechanical keycap on a black tile; `build.sh` copies `Icon/AppIcon.icns` in. |
 | `Sources/AppModel.swift` | All settings (UserDefaults-backed) plus live status, shared by the menu and the panel. |
 | `Sources/SettingsPanel.swift` | Borderless floating SwiftUI panel. |
+| `Sources/PanelProcess.swift` | Runs the panel as its own `Cream --panel` process that quits on close, and keeps its settings in step with the menu bar app over distributed notifications. |
 | `Sources/MouseSound.swift` | Mouse click sounds: built-in + user library, import/remove, Crisp copy. |
 | `Sources/PackStore.swift` | Lists, imports (folder/zip/files) and removes packs; generates a config for loose files. |
 | `Sources/SoundPack.swift` | Parses config.json (multi/single), decodes and converts every sound to 44.1 kHz stereo, makes the Crisp copies. |
@@ -156,6 +157,9 @@ hear them as recorded. Adjust the tail length with the **Tail** slider (10–150
 | Typing ~72 WPM | ~0.7% of one core | ~20 MB | ~+10% of one core while typing |
 | Typing ~120 WPM | ~0.8% | ~20 MB | ~+10% |
 | Typing ~240 WPM | ~1.0% | ~20 MB | ~+10% |
+
+The settings panel is a separate process, so its SwiftUI memory (~15 MB) goes
+away when you close it instead of staying in the menu bar app for good.
 
 ## Credits
 

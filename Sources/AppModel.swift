@@ -27,6 +27,21 @@ final class DeviceSettings: ObservableObject {
         tailMs = defaults.object(forKey: keys.tailMs) as? Double ?? 25
         selectedID = defaults.string(forKey: keys.selected) ?? defaultID
     }
+
+    /// These settings by their defaults keys, for sending to the other process.
+    var snapshot: [String: Any] {
+        [keys.enabled: enabled, keys.volume: volume, keys.crisp: crisp, keys.tailMs: tailMs, keys.selected: selectedID]
+    }
+
+    /// Takes whatever differs from a snapshot (assigning equal values would
+    /// still fire the publishers, and with them a preview click).
+    func apply(_ s: [String: Any]) {
+        if let v = s[keys.enabled] as? Bool, v != enabled { enabled = v }
+        if let v = s[keys.volume] as? Double, v != volume { volume = v }
+        if let v = s[keys.crisp] as? Bool, v != crisp { crisp = v }
+        if let v = s[keys.tailMs] as? Double, v != tailMs { tailMs = v }
+        if let v = s[keys.selected] as? String, v != selectedID { selectedID = v }
+    }
 }
 
 /// All user settings plus live status, shared by the menu bar menu and the
@@ -128,6 +143,30 @@ final class AppModel: ObservableObject {
         } catch {
             notice = error.localizedDescription
         }
+    }
+
+    // MARK: Between processes
+
+    /// Settings and status by key, sent between the menu bar agent and the
+    /// settings panel process (see SettingsSync).
+    var snapshot: [String: Any] {
+        var s: [String: Any] = ["enabled": enabled, "launchAtLogin": launchAtLogin, "isListening": isListening,
+                                "notice": notice ?? ""]
+        s.merge(keyboard.snapshot) { a, _ in a }
+        s.merge(mouse.snapshot) { a, _ in a }
+        return s
+    }
+
+    func apply(_ s: [String: Any]) {
+        // The other process may have added or removed sounds.
+        reloadPacks()
+        reloadMouseSounds()
+        if let v = s["enabled"] as? Bool, v != enabled { enabled = v }
+        if let v = s["launchAtLogin"] as? Bool, v != launchAtLogin { launchAtLogin = v }
+        if let v = s["isListening"] as? Bool, v != isListening { isListening = v }
+        if let v = s["notice"] as? String, v != (notice ?? "") { notice = v.isEmpty ? nil : v }
+        keyboard.apply(s)
+        mouse.apply(s)
     }
 
     func syncLaunchAtLogin() {

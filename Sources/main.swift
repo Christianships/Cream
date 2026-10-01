@@ -1,15 +1,17 @@
 import AppKit
 import Combine
-import UniformTypeIdentifiers
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
+// With --panel this binary is the settings panel instead (see PanelProcess.swift).
+if CommandLine.arguments.contains("--panel") { runPanelProcess() }
+
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let model = AppModel()
     private let listener = KeyListener()
     private let clicks = ClickEngine(format: SoundPack.format)
     private var pack: SoundPack!
     private var mouseSound: ClickSound!
     private var statusItem: NSStatusItem!
-    private var settingsPanel: SettingsPanel?
+    private lazy var sync = SettingsSync(model: model)
     private var permissionTimer: Timer?
     private var subscriptions: Set<AnyCancellable> = []
     private let menu = NSMenu()
@@ -30,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         loadSelectedPack()
         loadMouseSound()
         observeModel()
+        sync.onPreview = { $0.preview() }
 
         let keyboard = model.keyboard, mouse = model.mouse
         listener.onPress = { [weak self] keyCode in
@@ -160,46 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     // MARK: Settings panel
 
     @objc private func showSettings() {
-        if settingsPanel == nil {
-            let panel = SettingsPanel(model: model)
-            panel.delegate = self
-            panel.onAddSounds = { [weak self] in self?.addSounds(for: $0) }
-            settingsPanel = panel
-        }
-        NSApp.activate(ignoringOtherApps: true)
-        settingsPanel?.makeKeyAndOrderFront(nil)
-    }
-
-    func windowWillClose(_ note: Notification) {
-        guard (note.object as? SettingsPanel) === settingsPanel else { return }
-        settingsPanel = nil
-        model.notice = nil
-        DispatchQueue.main.async { NSApp.hide(nil) } // hand focus back to the previous app
-    }
-
-    private func addSounds(for device: Device) {
-        guard let panel = settingsPanel else { return }
-        let picker = NSOpenPanel()
-        picker.prompt = "Add"
-        picker.canChooseFiles = true
-        picker.allowsMultipleSelection = true
-        switch device {
-        case .keyboard:
-            picker.message = "Choose a Mechvibes sound pack (folder or .zip) or some audio files"
-            picker.canChooseDirectories = true
-            picker.allowedContentTypes = [.folder, .zip, .audio]
-        case .mouse:
-            picker.message = "Choose one or more click sounds (each becomes an option)"
-            picker.canChooseDirectories = false
-            picker.allowedContentTypes = [.audio]
-        }
-        picker.beginSheetModal(for: panel) { [weak self] response in
-            guard response == .OK, let self else { return }
-            switch device {
-            case .keyboard: self.model.importSounds(picker.urls)
-            case .mouse: self.model.importMouseSounds(picker.urls)
-            }
-        }
+        PanelProcess.open(sync: sync)
     }
 
     // MARK: Menu
