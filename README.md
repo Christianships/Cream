@@ -1,4 +1,8 @@
-# Cream
+<p align="center">
+  <img src="docs/icon.png" width="140" alt="Cream app icon: a white keycap">
+</p>
+
+<h1 align="center">Cream</h1>
 
 A macOS menu bar app for **customizing the sounds your keyboard and mouse make**.
 Load any mechanical-keyboard sound pack and every key you type plays its own
