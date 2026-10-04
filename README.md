@@ -11,7 +11,9 @@
 
 <p align="center">Mechanical keyboard and mouse click sounds for your whole Mac.</p>
 
-![Using the Cream settings panel](docs/demo.gif)
+<p align="center">
+  <img src="docs/demo.gif" alt="Using the Cream settings panel">
+</p>
 
 ## Install
 
